@@ -1,3 +1,4 @@
+#include <Wire.h>
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float32.h>
@@ -20,12 +21,15 @@ int32_t frequency3 = 0;
 
 
 void boxCallback ( const geometry_msgs::Twist& twistMsg ){
-  frequency1 = twistMsg.linear.x;
-  frequency2 = twistMsg.linear.y;
-  frequency3 = twistMsg.linear.z; 
+  frequency1 = abs( twistMsg.linear.x );
+  frequency2 = abs( twistMsg.linear.y );
+  frequency3 = abs( twistMsg.linear.z );
+  SetPinFrequency(cooler_pin, frequency1);
+  SetPinFrequency(LED_left_pin, frequency2); 
+  SetPinFrequency(LED_right_pin, frequency3);
 }
 
-ros::Subscriber<geometry_msgs::Twist> sub1("box", &boxCallback) ;
+ros::Subscriber<geometry_msgs::Twist> sub("box", &boxCallback) ;
 
 void setup(){
   //initialize all timers except for 0, to save time keeping functions
@@ -33,37 +37,31 @@ void setup(){
   nh.initNode();
 
   // Subscribe 
-  nh.subscribe(sub1);
+  nh.subscribe(sub);
   nh.advertise(temp);
 
   // =======================================================================================
   /* ================ PWM Function  ======================================================= */
-  //PWM to cooler
+
   pinMode(cooler_pin, OUTPUT);
-  SetPinFrequency(cooler_pin, frequency1);
-  //PWM to LED_left
   pinMode(LED_left_pin, OUTPUT);
-  SetPinFrequency(LED_left_pin, frequency2);
-  //PWM to LED_right  
   pinMode(LED_right_pin, OUTPUT);
-  SetPinFrequency(LED_right_pin, frequency3);
-  
-    while(true){
-    //setting the duty to 50% with the highest possible resolution that 
-    //can be applied to the timer (up to 16 bit). 1/2 of 65536 is 32768.
-    pwmWriteHR(cooler_pin, 32768);
-    pwmWriteHR(LED_left_pin, 32768);
-    pwmWriteHR(LED_right_pin, 32768);
-  }
   
   
 }
 
 void loop(){
-  nh.spinOnce();
-
+  
   temp_msg.data = analogRead(sensor1);
   temp.publish( &temp_msg);
+  
+  nh.spinOnce();
 
+  //setting the duty to 50% with the highest possible resolution that 
+  //can be applied to the timer (up to 16 bit). 1/2 of 65536 is 32768.
+    pwmWriteHR(cooler_pin, 32768);
+    pwmWriteHR(LED_left_pin, 32768);
+    pwmWriteHR(LED_right_pin, 32768);
+    
   delay(100);
 }
